@@ -20,4 +20,37 @@ Forcing comes into play when we have an expression that directly implies somethi
 immediately start assuming that. Similarly, when we see x.foo, we immediately know that x is neither null nor undefined.
 
   Function inference.
-  Functions are inferred by invocation.
+  Functions are inferred by invocation. So to 'repair' a broken expression of the form f(), where f is a variant, we make it into a function.
+
+  Definedness inference.
+  Anytime we see an expression of the form 'x.y' or 'x[y]', we can assume that x is not null or undefined.
+
+  Boolean inference.
+  This is where things actually get interesting. Most trivial assumptions have to do with providing suitable values for functions or objects/arrays, but there are cases where we need to change
+  the outcome of a branch. For example, consider this code:
+
+  | if (document.getElementById) {
+      return document.getElementById('foo');
+    } else {
+      throw new Error("Your browser is horribly borked");
+    }
+
+  A casual trace might run like this:
+
+  | 1. Assume document is non-null.
+    2. document.getElementById arbitrarily is undefined for now.
+    3. The boolean condition returns undefined, which is falsy; so take the 'else' branch.
+    4. throw an error, which triggers a backtrack.
+
+  The backtracking step then goes back to the 'if' conditional, which is the last point that we could have changed the outcome of the program. It's determined by an abstract quantity with
+  variant properties, which means that we can change our assumptions about it. Now we assume that document.getElementById is truthy, since that's what it takes to switch the conditional. So we
+  re-run the analysis:
+
+  | 1. Assume that document is {getElementById: <truthy>}.
+    2. The boolean condition is truthy, so take the 'then' branch.
+    3. 'return' evaluates its argument.
+    4. document.getElementById() fails. Since it's obvious why it fails, we can refine <truthy> into (function (<undecided>) {<undecided>}).
+
+  At this point we have this framing code:
+
+  | var document = {getElementById: function () {}};
