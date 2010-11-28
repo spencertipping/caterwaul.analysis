@@ -54,3 +54,25 @@ immediately start assuming that. Similarly, when we see x.foo, we immediately kn
   At this point we have this framing code:
 
   | var document = {getElementById: function () {}};
+
+  Aliasing.
+  Aliasing is common for performance reasons. For example:
+
+  | var foo = object.bar.foo;
+
+  We handle this by taking the abstract value represented by object.bar.foo and storing that reference in foo. Abstracts are references that behave like normal JS values.
+
+  Multi-stage backtracking.
+  Sometimes you need to backtrack more than once. For example, suppose you have this code:
+
+  | some_global.method();
+    var element = document.getElementById('foo');
+    if (element) {
+      if (some_global) {
+        throw new Error('Oops!');
+      }
+    }
+
+  The innermost conditional is decided already due to the some_global.method() code at the top. (We don't consider the oddity that 'false' can be falsy and have methods. This may change if it
+  turns out to be important.) When we hit the 'throw', we find that there are no variants in the immediately-preceding conditional and so we proceed to the one before that. We then find the
+  abstract 'element' (it's aliased to an abstract returned by document.getElementById()) and make sure that it's falsy.
