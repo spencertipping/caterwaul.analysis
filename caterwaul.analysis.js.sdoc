@@ -1,0 +1,23 @@
+Caterwaul code analysis module | Spencer Tipping
+Licensed under the terms of the MIT source code license
+
+Introduction.
+This module emulates Javascript code with an abstract set of assumptions, and refines those assumptions as it goes. The goal is to be able to determine what kinds of requirements a piece of
+code has. For example, here's a function:
+
+| function (x) {return x + y}
+
+This function has a free variable y that has almost no information. We could plug in any value we wanted and it would still work. However, if we change the code to a function that invokes x
+and y, that is, function (x) {return x() + y()}, we now know that y must be a function. We also know that x must be a function, so in the expression (function (x) {return x() + y()})(z) we can
+infer that z is a function of some sort.
+
+Forcing expressions.
+We assume that the code you're analyzing is not supposed to throw errors out to its calling context. That's the basis for all of the variance within the abstract variables. As soon as we see a
+toplevel error, we backtrack to the nearest variant point (defined as a conditional involving an abstract value). We then try to change the conditional to take the branch not involving an
+error. Once a change is made it isn't ever un-made, so abstracts only increase in information (i.e. we don't re-guess things about them).
+
+Forcing comes into play when we have an expression that directly implies something. For example, f() directly implies that f is a function. When we see f(), we need f to be a function, so we
+immediately start assuming that. Similarly, when we see x.foo, we immediately know that x is neither null nor undefined.
+
+  Function inference.
+  Functions are inferred by invocation.
